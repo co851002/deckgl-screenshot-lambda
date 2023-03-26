@@ -1,20 +1,29 @@
+//Avg response 20sec with below settings and 2048mb memory
+
 const chromium = require('chrome-aws-lambda');
 const puppeteer = require('puppeteer-core');
+//Layer instructions
+//install deps
+//create a new folder called nodejs:
+//move node_modules folder into the nodejs folder:
+//zip the nodejs folder:
+//zip -r nodejs.zip 
+//create lambda layer with src from s3 and attach to lambda
 
 exports.handler = async (event, context) => {
     let browser = null;
     let result = null;
 
     // Get URL parameters or default to London, UK
-    // 51.5072° N, 0.1276° W
+    // 51.12 N, 0.13° W
     // Get URL parameters
     const queryParams = event.queryStringParameters || {};
-    const latitude = parseFloat(queryParams.latitude) || 51.6176181;
-    const longitude = parseFloat(queryParams.longitude) || -0.015926;
+    const latitude = parseFloat(queryParams.latitude) || 51.12;
+    const longitude = parseFloat(queryParams.longitude) || 0.13;
     const zoom = parseFloat(queryParams.zoom) || 5;
 
-
     try {
+        //Launch new browser
         browser = await puppeteer.launch({
             args: chromium.args,
             defaultViewport: chromium.defaultViewport,
@@ -23,6 +32,7 @@ exports.handler = async (event, context) => {
         });
 
         const page = await browser.newPage();
+        // Set vp
         await page.setViewport({ width: 1920, height: 1080 });
 
         // Load external scripts
@@ -55,7 +65,7 @@ exports.handler = async (event, context) => {
 
             new DeckGL({
                 views: new _GlobeView({
-                    resolution: 7
+                    resolution: 10
                 }),
                 initialViewState: {
                     longitude: longitude,
@@ -91,17 +101,20 @@ exports.handler = async (event, context) => {
 
         }, { latitude, longitude, zoom });
 
-        // Wait for the scene to render
+        // Wait for the scene to render 12sec seem enough, any lower will have missing tiles from the render
         await page.waitForTimeout(12000);
 
-        // Take a screenshot and save it as a PNG
-        const screenshot = await page.screenshot({type: 'jpeg', quality: 70, encoding: 'base64'});
-        // Take screenshot of page and convert to PNG buffer
+        // Take a screenshot and save it as a jpeg or add to buffer as response / change to png but takes more resources
+        const screenshot = await page.screenshot({ type: 'jpeg', quality: 70, encoding: 'base64' });
+
+        // Take screenshot of page and convert to jpeg buffer
         const screenshotBuffer = screenshot;
+
+        ///save the screenshot locally or upload to s3
         // fs.writeFileSync('deckgl-globe.png', screenshot);
 
         await browser.close();
-        // Return PNG buffer as response
+        // Return jpeg buffer as response
         const response = {
             statusCode: 200,
             headers: {
@@ -120,5 +133,5 @@ exports.handler = async (event, context) => {
         }
     }
 
-    
+
 };
