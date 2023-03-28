@@ -1,13 +1,13 @@
 {
-  "name": "puppeteer-layer",
+  "name": "deckgl-screenshot-lambda",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "co851002",
+  "license": "MIT",
   "dependencies": {
     "puppeteer-core": "latest",
     "chrome-aws-lambda": "latest"

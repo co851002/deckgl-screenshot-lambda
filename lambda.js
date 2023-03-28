@@ -1,16 +1,33 @@
-//Avg response 20sec with below settings and 2048mb memory
-
 const chromium = require('chrome-aws-lambda');
 const puppeteer = require('puppeteer-core');
-//Layer instructions
-//install deps
-//create a new folder called nodejs:
-//move node_modules folder into the nodejs folder:
-//zip the nodejs folder:
-//zip -r nodejs.zip 
-//create lambda layer with src from s3 and attach to lambda
+//Zip nodejs folder and upload to s3 , create lambda layer with src from s3 (file limitations)
+//Needs to be nodejs folder in root with node_modules inside for the lambda to recognise the packages
+
+
+//Debug timer
+// let times = [];
+// const timer = () => {
+//   var currentdate = new Date();
+//   var datetime =
+//     "Now: " +
+//     currentdate.getDate() +
+//     "/" +
+//     (currentdate.getMonth() + 1) +
+//     "/" +
+//     currentdate.getFullYear() +
+//     " @ " +
+//     currentdate.getHours() +
+//     ":" +
+//     currentdate.getMinutes() +
+//     ":" +
+//     currentdate.getSeconds();
+//   times.push(datetime);
+//   console.log(datetime);
+// };
 
 exports.handler = async (event, context) => {
+    //timer();
+
     let browser = null;
     let result = null;
 
@@ -21,6 +38,7 @@ exports.handler = async (event, context) => {
     const latitude = parseFloat(queryParams.latitude) || 51.12;
     const longitude = parseFloat(queryParams.longitude) || 0.13;
     const zoom = parseFloat(queryParams.zoom) || 5;
+
 
     try {
         //Launch new browser
@@ -58,6 +76,8 @@ exports.handler = async (event, context) => {
             </body>
             </html>
         `);
+        
+        // await page.exposeFunction("timer", timer);
 
         // Define the Deck.gl Globe
         await page.evaluate(({ latitude, longitude, zoom }) => {
@@ -75,7 +95,9 @@ exports.handler = async (event, context) => {
                     maxZoom: 20
                 },
                 controller: true,
-
+                // onBeforeRender: async () => {
+                //   await timer();
+                // },
                 layers: [
                     new TileLayer({
                         data: 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -102,26 +124,31 @@ exports.handler = async (event, context) => {
         }, { latitude, longitude, zoom });
 
         // Wait for the scene to render 12sec seem enough, any lower will have missing tiles from the render
-        await page.waitForTimeout(12000);
+        await page.waitForTimeout(2000);
 
-        // Take a screenshot and save it as a jpeg or add to buffer as response / change to png but takes more resources
-        const screenshot = await page.screenshot({ type: 'jpeg', quality: 70, encoding: 'base64' });
-
-        // Take screenshot of page and convert to jpeg buffer
+        // Take a screenshot and save it as a png or add to buffer as response / change to png but takes more resources
+        const screenshot = await page.screenshot({type: 'png',  encoding: 'base64'});
+       
+        // Take screenshot of page and convert to png buffer
         const screenshotBuffer = screenshot;
-
+        
         ///save the screenshot locally or upload to s3
         // fs.writeFileSync('deckgl-globe.png', screenshot);
 
         await browser.close();
-        // Return jpeg buffer as response
+        // await timer();
+        // let responseBody = {
+        //   image: screenshotBuffer.toString("base64"),
+        //   times: times,
+        // };
+        // Return png buffer as response
         const response = {
             statusCode: 200,
             headers: {
-                'Content-Type': 'image/jpeg',
+                'Content-Type': 'image/png',
             },
             isBase64Encoded: true,
-            body: screenshotBuffer.toString('base64'),
+            body: screenshotBuffer.toString("base64")
         };
         return response
 
@@ -132,6 +159,4 @@ exports.handler = async (event, context) => {
             await browser.close();
         }
     }
-
-
 };
